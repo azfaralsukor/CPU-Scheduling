@@ -43,26 +43,18 @@ for (( i=0; i<n; i++ )); do
 	echo
 done
 
-for ((i=0; i<n; i++)) do 
-	wt[i]=0
-	for ((j=0; j<i; j++))
-	do
-		wt[i]=`expr ${wt[i]} + ${bt[j]}`
-	done
-done
- 
-echo "Process   Arrival Time   Burst Time   Priority   Waiting Time   Turnaround Time"
- 				
 for ((i=0; i<n; i++)) do
-	tat[i]=`expr ${bt[i]} + ${wt[i]}`
-	twt=`expr ${twt[i]} + ${wt[i]}`
+	fcfs_bt[i]=${bt[i]}
+	fcfs_p[i]=${p[i]}
+	total=`expr $total + ${bt[i]}`
+done
+	tat[i]=`expr ${fcfs_ft[i]} - ${at[i]}`
+	twt=`expr $twt + ${wt[i]}`
 	ttat=`expr $ttat + ${tat[i]}`
 	echo "  P["$i"]          "${at[i]}"             "${bt[i]}"          "${p[i]}"                "${wt[i]}"              "${tat[i]}
-	total=${tat[i]}
-done    
 
 echo
-echo "~~{Gantt Chart}~~"
+echo "~~{Pre-Emptive First Come First Serve Gantt Chart}~~"
 echo
 
 echo "Time       Process"
@@ -73,15 +65,15 @@ previous=-1
 
 while [ $count -ne $total ]; do
 	for (( i = 0; i < n; i++ )); do
-		if [ ${bt[i]} -gt 0 ]; then
+		if [ ${fcfs_bt[i]} -gt 0 ]; then
 			if [ ${at[i]} -le $count ]; then
-				if [ ${p[i]} -lt $prior ]; then
-					prior=${p[i]}
+				if [ ${fcfs_p[i]} -lt $prior ]; then
+					prior=${fcfs_p[i]}
 					processing=$i
 				fi
 			elif [ ${at[i]} -le ${at[$processing]} ]; then
-				if [ ${p[i]} -lt $prior ]; then
-					prior=${p[i]}
+				if [ ${fcfs_p[i]} -lt $prior ]; then
+					prior=${fcfs_p[i]}
 					processing=$i				
 				fi
 			fi
@@ -89,22 +81,36 @@ while [ $count -ne $total ]; do
 	done
 	
 	if [ $previous -ne $processing ]; then
+		if [ ${at[$processing]} -gt $count ]; then
+			count=${at[$processing]}
+			total=`expr $total + ${at[$processing]}`
+		fi
 		echo $count"            P["$processing"]" 
 		previous=$processing
 	fi
 
-	if [ ${bt[$processing]} -gt 1 ]; then
-		bt[$processing]=`expr ${bt[$processing]} - 1`
+	if [ ${fcfs_bt[$processing]} -gt 1 ]; then
+		fcfs_bt[$processing]=`expr ${fcfs_bt[$processing]} - 1`
 	else
+		fcfs_ft[$processing]=`expr $count + 1`
 		prior=7
-		p[$processing]=7
+		fcfs_p[$processing]=7
 	fi
 	let count+=1
 done
-
 	echo $total"            END"
 
+echo "Process   Arrival Time   Burst Time   Priority   Waiting Time   Turnaround Time"
+ 				
+for ((i=0; i<n; i++)) do
+	wt[i]=`expr ${fcfs_ft[i]} - ${at[i]} - ${bt[i]}`
+	tat[i]=`expr ${fcfs_ft[i]} - ${at[i]}`
+	twt=`expr $twt + ${wt[i]}`
+	ttat=`expr $ttat + ${tat[i]}`
+	echo "  P["$i"]          "${at[i]}"             "${bt[i]}"          "${p[i]}"                "${wt[i]}"              "${tat[i]}
+
+done    
+
 echo 
-echo
 awk "BEGIN {printf \"Average Waiting Time: %.2f\n\", $twt/$n}"
 awk "BEGIN {printf \"Average Turnaround Time: %.2f\n\", $ttat/$n}"
